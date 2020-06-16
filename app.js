@@ -1,12 +1,9 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-const session = require('express-session');
-const fileStore = require('session-file-store')(session);
 const passport = require('passport');
-const authenticate = require('./authenticate');
+const config = require('./config');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -16,7 +13,7 @@ const partnerRouter = require('./routes/partnerRouter');
 
 const mongoose = require('mongoose');
 
-const url = 'mongodb://localhost:27017/nucampsite';
+const url = config.mongoUrl;
 const connect = mongoose.connect(url, {
   useCreateIndex: true,
   useFindAndModify: false,
@@ -30,6 +27,15 @@ connect.then(() => console.log('Connected correctly to server'),
 
 var app = express();
 
+app.all('*', (req, res, next) => {
+  if (req.secure) {
+    return next();
+  } else {
+    console.log(`Redirecting to: https://${req.hostname}:${app.get('secPort')}${req.url}`);
+    res.redirect(301, `https://${req.hostname}:${app.get('secPort')}${req.url}`);
+  }
+});
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -38,34 +44,15 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 //app.use(cookieParser('secret-key'));
-app.use(passport.initialize());
-app.use(passport.session());
 
-app.use(session({
-  name: 'session-id',
-  secret: 'secret-key',
-  saveUninitialized: false,
-  resave: false,
-  store: new fileStore()
-}));
+
+
+app.use(passport.initialize());
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-function auth(req, res, next) {
-  console.log(req.session);
 
-  if (!req.user) {
-   const err = new Error('You are not authenticated!');
-   err.status = 403;
-   return next(err);
-} else {
-   return next()
-  }
-}
-
-
-app.use(auth);
 app.use(express.static(path.join(__dirname, 'public')));
 
 

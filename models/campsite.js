@@ -24,6 +24,10 @@ const commentSchema = new Schema({
 });
 
 const campsiteSchema = new Schema({
+    author: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
     name: {
         type: String,
         required: true,
